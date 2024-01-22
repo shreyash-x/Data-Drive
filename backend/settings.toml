@@ -1,0 +1,15 @@
+[drive]
+max-preview-size = 15728640
+min-bandwidth = 3533931
+default-user-quota = 54818350226
+default-user-permission = 2
+allowed-file-extensions = [
+    ".png",
+    ".jpg",
+    ".webp",
+    ".pdf",
+    ".tex",
+    ".md",
+    ".mp4",
+    "mkv",
+]

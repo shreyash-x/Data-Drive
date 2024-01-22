@@ -1,0 +1,228 @@
+:root {
+  --background-color: white;
+  --text-color: black;
+}
+
+[data-theme="dark"] {
+  --background-color: black;
+  --text-color: white;
+}
+
+.full-page {
+  height: 100vh;
+  width: 100vw;
+  display: flex;
+  justify-content: center;
+}
+
+[data-theme="dark"] .ant-tabs {
+  background-color: #424242;
+}
+
+[data-theme="dark"] .ant-spin-container {
+  background-color: #424242;
+}
+
+
+
+[data-theme="dark"] .full-page {
+  background-color: #424242;
+}
+
+[data-theme="dark"] .ant-menu-sub {
+  background-color: #323232 !important;
+  color: #fff;
+}
+
+/* if data-theme is dark then change background color to grey of anything which starts or has antd */
+[data-theme="dark"] [class*=' ant'] {
+  background-color: #424242;
+  color: #fff;
+}
+
+[data-theme="dark"] [class^='ant'] {
+  background-color: #424242;
+  color: #fff;
+}
+
+
+.chonky {
+  height: 100vh;
+  width: 100vw;
+  font-size: 100px;
+  font-weight: bold;
+  color: #fff;
+  text-shadow: 0 0 10px rgba(0, 0, 0, 0.2);
+}
+
+.chonky-fileThumbnail {
+  background-size: cover !important;
+}
+
+.chonky-chonkyRoot {
+  /* remove borders completely */
+  height: 100vh !important;
+  border: none !important;
+  border-radius: 0px !important;
+}
+
+
+[class*=' Mui'],
+[class^='Mui'] {
+  font-family: Quicksand !important;
+  font-size: 17px;
+}
+
+[class*=' ant'],
+[class^='ant'] {
+  font-family: Quicksand !important;
+}
+
+[class*=' listFileEntryProperty'],
+[class^='listFileEntryProperty'] {
+  flex-basis: 160px !important;
+}
+
+.carousel-div {
+  height: 500px;
+  width: 100vw;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.videoName {
+  font-size: 20px;
+  font-weight: bold;
+  color: #000;
+  text-align: center;
+}
+
+.theme-toggle-button {
+  background-color: transparent;
+  border: none;
+  transition: background-color 0.3s ease, box-shadow 0.3s ease;
+  color: var(--text-color);
+  border-radius: 10px;
+  cursor: pointer;
+}
+
+[data-theme="dark"] .theme-toggle-button {
+  color: var(--text-color);
+}
+
+.theme-toggle-button:hover {
+  background-color: rgba(0, 0, 0, 0.1);
+}
+
+.footer {
+  position: fixed;
+  bottom: 0;
+  width: 100%;
+  height: 5vh;
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  padding: 1em;
+}
+
+.tabs {
+  margin-top: 50px;
+  /* Adjust this value as needed */
+  margin-left: 50px;
+}
+
+.centered-opaque-spinner .ant-spin-dot {
+  opacity: 1 !important;
+}
+
+.centered-opaque-spinner {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  height: 100%;
+}
+
+.custom-menu {
+  width: 315px;
+  align-items: flex-start !important;
+}
+
+.menu-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: space-between;
+  width: 300px;
+  flex-shrink: 0;
+  height: 100%;
+}
+
+.menu-container h1 {
+  font-size: 2em;
+  /* Adjust as needed */
+}
+
+.ant-menu-dark {
+  background-color: #424242;
+  color: #fff;
+}
+
+.user-info {
+  position: fixed;
+  z-index: 100;
+  bottom: 0;
+  left: 0;
+  width: 100%;
+  padding: 10px;
+  font-size: 0.8em;
+}
+
+.user-info p {
+  display: flex;
+  flex-direction: column;
+  row-gap: 16;
+  margin: 0;
+  padding: 0;
+  color: #333;
+}
+
+.user-info button {
+  margin-top: 10px;
+  padding: 5px 10px;
+  font-size: 16px;
+  color: #fff;
+  background: #007bff;
+  border: none;
+  border-radius: 5px;
+  cursor: pointer;
+}
+
+.sharedby {
+  height: 100vh;
+  width: 100vw;
+  font-size: 20px;
+  font-weight: bold;
+  z-index: 100;
+}
+
+.deepsearchbutton{
+  position: fixed;
+  bottom: 20px;
+  right: 20px;
+  z-index: 100;
+}
+
+.deepsearchbutton:hover,
+.deepsearchbutton:focus {
+  box-shadow: 0 0.5em 0.5em -0.4em var(--hover);
+  -webkit-transform: translateY(-1vh);
+  transform: translateY(-1vh);
+}
+
+.ant-notification-notice {
+  cursor: pointer;
+}
