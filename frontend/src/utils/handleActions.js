@@ -1,4 +1,4 @@
-import { downloadFile, deleteFiles, openDirectory, openImage, openMarkdown, openOtherFile, openVideo } from "./fileActions";
+import { downloadFile, downloadPublicLinkFile, deleteFiles, openDirectory, openImage, openMarkdown, openOtherFile, openVideo } from "./fileActions";
 
 /**
  * Downloads the selected files.
@@ -6,13 +6,19 @@ import { downloadFile, deleteFiles, openDirectory, openImage, openMarkdown, open
  * @param {Object} data - The data object containing the state and selected files.
  * @param {Function} notifyFailure - The function to notify in case of failure.
  */
-export const downloadSelectedFiles = (data, notifyFailure) => {
+export const downloadSelectedFiles = (data, notifyFailure, token = null) => {
   console.log("download_files", data.state);
+  console.log("Token:", token);
   const numFiles = data.state.selectedFiles.length;
   if (numFiles === 1) {
     console.log("downloading file", data.state.selectedFiles[0].id)
     var downloadpath = data.state.selectedFiles[0].id;
-    downloadFile(downloadpath, notifyFailure);
+    if (token !== null) {
+      downloadPublicLinkFile(downloadpath, token, notifyFailure)
+    }
+    else {
+      downloadFile(downloadpath, notifyFailure);
+    }
   }
 };
 

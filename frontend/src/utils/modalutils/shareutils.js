@@ -98,3 +98,56 @@ export const handleShareFolderFormSubmit = (values, selectedFiles, setIsShareFol
     setIsShareFolderModalOpen(false);
 };
 
+
+/**
+ * Handles generating public link for a file or folder.
+ * 
+ * 
+ */
+export const handleGeneratePublicLink = (values, selectedFiles) => {
+    console.log("Generating public link for", selectedFiles)
+
+    let expiration = 60;
+    switch (values.timelimit) {
+        case "1hr":
+            expiration = 60;
+            break;
+        case "6hr":
+            expiration = 360;
+            break;
+        case "12hr":
+            expiration = 720;
+            break;
+        case "1 Day":
+            expiration = 1440;
+            break;
+        case "2 Days":
+            expiration = 2880;
+            break;
+        default:
+            expiration = 60;
+            break;
+    }
+
+    selectedFiles.forEach(async (file) => {
+        var tempid = file.id;
+        if (file.isDir) {
+            tempid = tempid.slice(0, -1);
+        }
+        const shareRequest = {
+            "path": tempid,
+            "expiration": expiration
+        };
+        await api.post("/share_public", shareRequest)
+            .then((response) => {
+                console.log(response);
+                const domainname = window.location.host;
+                showNotification(response.data.message + ": Click to Copy Link", domainname + "/public/" + response.data.data.url);
+            })
+            .catch((error) => {
+                console.log(error);
+                notifyFailure(error.response.data.detail);
+            });
+    })
+
+}

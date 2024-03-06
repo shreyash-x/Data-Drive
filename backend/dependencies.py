@@ -97,3 +97,4 @@ def get_admin(token: Annotated[str, Depends(oauth2_scheme)]):
 
 class MessageResponse(BaseModel):
     message: str
+    data: object = None

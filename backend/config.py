@@ -12,9 +12,9 @@ MONGO_CONFIG = settings.get(
 MINIO_CONFIG = settings.get(
     "minio",
     {
-        "host": "localhost:9000",
-        "username": "minio",
-        "password": "minio123",
+        "host": "localhost:9001",
+        "username": "minioadmin",
+        "password": "minioadmin",
         "bucket": "data-drive",
     },
 )

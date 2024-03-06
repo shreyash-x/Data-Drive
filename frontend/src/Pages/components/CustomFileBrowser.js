@@ -8,7 +8,7 @@ import { PictureModal } from "./PictureModal"
 import { CreateFolderModal } from "./CreateFolderModal"
 import { handleCopyFileFormSubmit } from "../../utils/modalutils/copyandmoveutils"
 import { handleMoveFileFormSubmit } from "../../utils/modalutils/copyandmoveutils"
-import { handleShareFolderFormSubmit } from "../../utils/modalutils/shareutils"
+import { handleShareFolderFormSubmit, handleGeneratePublicLink } from "../../utils/modalutils/shareutils"
 import Markdown from "react-markdown"
 /**
  * CustomFileBrowser component.
@@ -97,6 +97,7 @@ export const CustomFileBrowser = ({
                     selectedFiles={selectedFiles} />
                 <ShareFolderModal open={isShareFolderModalOpen}
                     onCancel={handleShareFolderModalCancel}
+                    onGeneratePublicLink={(values) => handleGeneratePublicLink(values, selectedFiles)}
                     onSubmit={(values) => handleShareFolderFormSubmit(values, selectedFiles, setIsShareFolderModalOpen)} selectedFiles={selectedFiles} />
                 
                 <Modal

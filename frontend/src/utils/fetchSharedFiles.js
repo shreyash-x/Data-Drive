@@ -18,7 +18,7 @@ const isImage = (file) => ['png', 'jpg', 'jpeg', 'gif', 'bmp', 'svg'].includes(f
  * @param {function} setPictures - The state setter function for pictures.
  * @returns {Promise<void>} - A promise that resolves when the files are fetched and the state is updated.
  */
-const fetchSharedFiles = async (path, user, setSharedFolders, setSharedFiles, setSharedPictures, ) => {
+const fetchSharedFiles = async (path, user, setSharedFolders, setSharedFiles, setSharedPictures, token = null, setErrorMessage) => {
     try {
         const sharedfolderChain = path.split('/').map((_, i, arr) => arr.slice(0, i + 1).join('/'));
         const tempFolderArray = sharedfolderChain.map((id, i) => ({
@@ -44,6 +44,7 @@ const fetchSharedFiles = async (path, user, setSharedFolders, setSharedFiles, se
         };
         if(path!==""){
             fileRequest.path = path;
+            fileRequest.token = token;
         }
         const res = await api.post('/list_shared_with', fileRequest);
         // only use those files for which the responses are not null
@@ -58,6 +59,8 @@ const fetchSharedFiles = async (path, user, setSharedFolders, setSharedFiles, se
         setSharedPictures(tempPictures);
     } catch (err) {
         console.error(err);
+        const errorMessage = err.response ? err.response.data.detail : err.message;
+        setErrorMessage(errorMessage);
     }
 };
 
