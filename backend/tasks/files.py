@@ -72,14 +72,16 @@ def clean_expired_jobs():
 def upload_file_to_minio(path, file, content_type, user, directory):
     print("Uploading")
     try:
-        mc.put_object(
-            MINIO_BUCKET,
-            path,
-            file.file,
-            -1,
-            content_type=content_type,
-            part_size=10*1024*1024,
-        )
+        # print(f"Uploading to {path}")
+        # mc.put_object(
+        #     MINIO_BUCKET,
+        #     path,
+        #     file.file,
+        #     -1,
+        #     content_type=content_type,
+        #     part_size=10*1024*1024,
+        # )
+        # print(f"Uploaded to {path}")
 
         file = File(
                 path=path,

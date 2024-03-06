@@ -19,10 +19,17 @@ const { Option } = Select;
  * @param {Array} props.selectedFiles - The selected files to be shared.
  * @returns {JSX.Element} The ShareFolderModal component.
  */
-function ShareFolderModal({ open, onCancel, onSubmit, selectedFiles }) {
+function ShareFolderModal({ open, onCancel, onSubmit, selectedFiles, onGeneratePublicLink }) {
     const [form] = Form.useForm();
     const [users, setUsers] = useState([]);
     const [isSharedWithEveryone, setIsSharedWithEveryone] = useState(false);
+    const timeLimits = ["1hr", "6hr", "12hr", "1 Day", "2 Days"];
+
+    const handleCopyLink = () => {
+        // dont validate fields
+        const values = form.getFieldsValue();
+        onGeneratePublicLink(values, selectedFiles);
+    }
 
     const handleCheckboxChange = (e) => {
         setIsSharedWithEveryone(e.target.checked);
@@ -96,6 +103,20 @@ function ShareFolderModal({ open, onCancel, onSubmit, selectedFiles }) {
                 <Form.Item name="sharewitheveryone" label="Share with Everyone" valuePropName="checked">
                     <Checkbox onChange={handleCheckboxChange}>Yes</Checkbox>
                 </Form.Item>
+                <Form.Item name="timelimit" label="Time Limit">
+                    <Select
+                        showSearch
+                        placeholder="Select a time limit"
+                        optionFilterProp="children"
+                        filterOption={(input, option) =>
+                            option.children.toLowerCase().indexOf(input.toLowerCase()) >= 0
+                        }>
+                        {timeLimits.map(timeLimit => (
+                            <Option key={timeLimit}>{timeLimit}</Option>
+                        ))}
+                    </Select>
+                </Form.Item>
+                <Button onClick={handleCopyLink}>Copy Link</Button>
             </Form>
         </Modal>
     );

@@ -3,7 +3,7 @@ import { CreateFolderModal } from "./CreateFolderModal"
 import { VideoModal } from "./VideoModal"
 import { PictureModal } from "./PictureModal"
 import Markdown from "react-markdown"
-import { FullFileBrowser } from "chonky"
+import { FullFileBrowser, ChonkyIconName, defineFileAction } from "chonky"
 /**
  * Renders a shared file browser component.
  *
@@ -26,6 +26,20 @@ import { FullFileBrowser } from "chonky"
  * @param {string} props.markdown - The markdown content.
  * @returns {JSX.Element} The shared file browser component.
  */
+
+const fileActions = [
+    defineFileAction({
+        id: "download_files",
+        requiresSelection: true,
+        button: {
+            name: "Download",
+            toolbar: true,
+            contextMenu: true,
+            icon: ChonkyIconName.download,
+        },
+    })
+];
+
 export const SharedFileBrowser = ({
     loading,
     isCreateFolderModalOpen,
@@ -43,8 +57,8 @@ export const SharedFileBrowser = ({
     isMarkdownModalOpen,
     setIsMarkdownModalOpen,
     markdown,
-    selectedPicture
- }) => {
+    selectedPicture,
+}) => {
     return (
         <div className="chonky">
             <Spin size="large" spinning={loading} tip="Loading..." className="centered-opaque-spinner">
@@ -62,6 +76,7 @@ export const SharedFileBrowser = ({
                 <FullFileBrowser
                     files={sharedfiles}
                     folderChain={sharedfolders}
+                    fileActions={fileActions}
                     onFileAction={handleAction}
                     disableDragAndDrop={true}
                 /></Spin>

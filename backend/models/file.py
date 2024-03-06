@@ -108,11 +108,35 @@ class SharedFile(Document):
     permission = EnumField(Permission, required=True)
     explicit = BooleanField(required=True, default=False)
     owner = ReferenceField(User, required=True)
+    isPublic = BooleanField(required=True, default=False)
+    expiration = DateTimeField(required=False)
+    publicAccessToken = StringField(required=False)
 
     meta = {
         "indexes": [
             "file",
             "user",
             "owner",
+            "isPublic",
+            "publicAccessToken"
         ]
     }
+
+    def is_shared_public(self):
+        """
+        Check if a file is shared publicly.
+        """
+        if self.isPublic:
+            return True
+        
+    def check_expiration(self):
+        """
+        Check if a file is expired.
+        """
+        if self.expiration:
+            if self.expiration < datetime.now():
+                return True
+            else:
+                return False
+        else:
+            return True

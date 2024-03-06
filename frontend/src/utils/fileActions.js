@@ -53,6 +53,51 @@ export const downloadFile = (filePath, notifyFailure) => {
     });
 };
 
+export const downloadPublicLinkFile = (filePath, pat, notifyFailure) => {
+  if (filePath[filePath.length - 1] === "/") {
+    filePath = filePath.slice(0, -1);
+  }
+  api.post("/tokenPublic", {
+    token: pat,
+    path: filePath
+  })
+    .then((res) => {
+      const token = res.data.token;
+      const interval = setInterval(() => {
+        api.get("/status/" + res.data.token).then((res) => {
+          if (res.data.status === "done") {
+            clearInterval(interval);
+            // window.open("/download/" + token);
+            fetch(`/api/download/${token}`)
+              .then(response => response.blob())
+              .then(blob => {
+                const url = window.URL.createObjectURL(blob);
+                const link = document.createElement('a');
+                link.href = url;
+                const fileName = filePath.split('/').pop(); // Extract file name from download path
+                link.setAttribute('download', fileName); // Use the actual file name here
+                link.style.display = 'none'; // Ensure the link element is not visible
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
+              })
+              .catch((error) => {
+                console.log(error);
+              });
+          } else if (res.data.status === "failed") {
+            notifyFailure("Download failed");
+            clearInterval(interval);
+          }
+        }).catch((err) => {
+          console.log(err);
+        });
+      }, 1000);
+    })
+    .catch((err) => {
+      console.log(err);
+    });
+};
+
 
 /**
  * Deletes the selected files.
