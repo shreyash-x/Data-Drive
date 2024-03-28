@@ -3,12 +3,14 @@ from mongoengine import (
     EmailField,
     StringField,
     DateTimeField,
+    ReferenceField,
     BooleanField,
     EnumField,
+    ListField,
     IntField,
 )
 
-from models.common import Permission
+from models.common import Permission,Role
 
 
 class User(Document):
@@ -24,11 +26,15 @@ class User(Document):
     username = StringField(required=True, unique=True)
 
     admin = BooleanField(default=False)
+   
     permission = EnumField(Permission, required=True, default=Permission.WRITE)
-
     storage_quota = IntField(required=True)
     storage_used = IntField(required=True, default=0)
-
+    
+    # changes for multi bucket system
+    role = EnumField(Role, required=True, default=Role.USER)
+    bucket_admin_list = ListField(StringField())
+        
     meta = {
         "indexes": [
             "email",
@@ -47,3 +53,18 @@ class InvalidToken(Document):
 
     token = StringField(required=True, unique=True)
     exp = DateTimeField(required=True)
+
+
+class AccessBuckets(Document):
+    """
+        Database model for maintaining, user list and their corresponding accesses to the buckets.
+    """
+    username = ReferenceField(User, required=True)
+    bucket_name = StringField(required=True)
+    meta = {
+        "indexes": [
+            "username",
+            "bucket_name"
+        ]
+    }
+    

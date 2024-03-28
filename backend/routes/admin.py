@@ -6,7 +6,9 @@ from fastapi import APIRouter, Depends, HTTPException, Body
 from config import app_config
 from dependencies import get_admin, MessageResponse
 from models.user import User
+from mongoengine.queryset.visitor import Q
 
+from models.bucket import BucketAccessList,Bucket
 admin_router = APIRouter(
     prefix="/admin",
     tags=["admin"],
@@ -16,25 +18,38 @@ admin_router = APIRouter(
 
 class Stats(BaseModel):
     username: str
+    bucket_name: str
+    role: str
     email: str
     permission: int
     storage_quota: int
     storage_used: int
-    admin: bool
 
 
-@admin_router.get("/users", response_model=List[Stats])
-def stats(admin: Annotated[bool, Depends(get_admin)]):
+@admin_router.post("/users", response_model=List[Stats])
+def stats(bucket_name:Annotated[str,Body(embed=True)]):
+    print("~~~~~~~~~~ QUERY RECEIVED",bucket_name)
+    bucket = Bucket.objects(name=bucket_name).first()
     users = []
-    for user in User.objects():
+    bucket_list = BucketAccessList.objects(bucket=bucket)
+    print("~~~~~~~~~~ BUCKET LIST",bucket_list)
+    for data in bucket_list:
+        print("~~~~~~~~~~ DATA",data)
+    roleMap = {
+        0: "USER",
+        1: "ADMIN",
+        2: "SUPERADMIN"
+    }
+    for data in bucket_list:
         users.append(
             Stats(
-                username=user.username,
-                email=user.email,
-                permission=user.permission.value,
-                storage_quota=user.storage_quota,
-                storage_used=user.storage_used,
-                admin=user.admin,
+                username=data.user.username,
+                bucket_name=bucket_name,
+                email=data.user.email,
+                role=roleMap[data.role.value],
+                permission=data.permission.value,
+                storage_quota=data.storage_quota,
+                storage_used=data.storage_used,
             )
         )
     return users

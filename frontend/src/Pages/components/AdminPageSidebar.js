@@ -11,7 +11,7 @@ const { Option } = Select;
  * @param {Object} config - The configuration object.
  * @returns {JSX.Element} The admin sidebar component.
  */
-export const AdminSidebar = (config) => {
+export const AdminSidebar = ({config,currentBucket}) => {
     const [numUsers, setNumUsers] = useState(0);
     const [totalSize, setTotalSize] = useState(0);
     const [isModalVisible, setIsModalVisible] = useState(false);
@@ -28,7 +28,7 @@ export const AdminSidebar = (config) => {
         });
     };
     useEffect(() => {
-        api.get("/admin/users").then((res) => {
+        api.post("/admin/users",{bucket_name:currentBucket}).then((res) => {
             setNumUsers(res.data.length);
             let totalSize = 0;
             res.data.forEach(user => {

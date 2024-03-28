@@ -23,13 +23,17 @@ from minio.deleteobjects import DeleteObject
 
 from dependencies import get_auth_user, get_auth_user_optional, MessageResponse
 from config import app_config, MINIO_BUCKET
-from models.user import User
+from models.user import User,AccessBuckets
 from models.file import File, SharedFile
 from models.common import Permission
 from models.job import Job, Status
 
 from storage.client import minio_client as mc
 from tasks.files import create_job, clean_expired_jobs, upload_file_to_minio
+
+# helper function to get bucket name and file path separately
+from utils.files import getFilePath
+
 
 files_router = APIRouter(
     prefix="",
@@ -92,6 +96,7 @@ async def upload_file(
 
         - **message**: Message indicating whether the file was uploaded successfully or not.
     """
+    print("INSIDE UPloaD FUNCTIOn")
     fileObj = File.objects(path=path).first()
     if fileObj:
         raise HTTPException(status_code=400, detail="File already exists!")
@@ -118,7 +123,7 @@ async def upload_file(
         content_type = "application/octet-stream"
 
     # Get quota user
-    quota_user = User.objects(username=path.split("/")[0]).first()
+    quota_user = User.objects(username=username).first()
     if quota_user.storage_used + file.size > quota_user.storage_quota:
         raise HTTPException(status_code=400, detail="User storage quota exceeded!")
 
@@ -175,7 +180,8 @@ def mkdir(
         return {"message": "You do not have permission to create a directory here!"}
 
     directory = File(path=data.path, owner=user, is_dir=True).save()
-    mc.put_object(MINIO_BUCKET, data.path + "/_", io.BytesIO(b""), 0)
+    bucketName, filePath = getFilePath(data.path)
+    mc.put_object(bucketName, filePath + "/_", io.BytesIO(b""), 0)
     return {"message": "Directory created successfully!"}
 
 
@@ -204,8 +210,12 @@ def list(
 
         - List of files and folders in the specified directory.
     """
+    print("DATA",data)
+    print(data.path)
     directory = File.objects(path=data.path).first()
+    print(directory)
     if not directory or not directory.is_dir:
+        print("Directory does not exist!")
         raise HTTPException(status_code=400, detail="Directory does not exist!")
 
     if username:
@@ -213,13 +223,15 @@ def list(
     else:
         user = None
     if not directory.can_read(user):
+        print("You do not have permission to access this directory!")
         raise HTTPException(
             status_code=400,
             detail="You do not have permission to access this directory!",
         )
 
     objJSON = []
-    for obj in mc.list_objects(MINIO_BUCKET, data.path + "/", recursive=False):
+    bucketName, filePath = getFilePath(data.path)
+    for obj in mc.list_objects(bucketName, filePath + "/", recursive=False):
         objJSON.append(
             {
                 "path": obj.object_name,
@@ -309,14 +321,14 @@ def delete(
             detail="You do not have permission to delete this file/folder!",
         )
     quota_user = User.objects(username=data.path.split("/")[0]).first()
-
-    if is_dir:
-        mc.remove_object(MINIO_BUCKET, data.path + "/_")
+    bucketName, filePath = getFilePath(data.path)
+    if is_dir:      
+        mc.remove_object(bucketName, filePath + "/_")
         delete_object_list = map(
             lambda x: DeleteObject(x.object_name),
-            mc.list_objects(MINIO_BUCKET, data.path, recursive=True),
+            mc.list_objects(bucketName, filePath, recursive=True),
         )
-        errors = mc.remove_objects(MINIO_BUCKET, delete_object_list)
+        errors = mc.remove_objects(bucketName, delete_object_list)
         # delete shared file objects associated with files in the directory
         for file in File.objects(path__startswith=data.path):
             SharedFile.objects(file=file).delete()
@@ -327,7 +339,7 @@ def delete(
         quota_user.save()
         return {"message": "Folder deleted successfully!"}
     else:
-        mc.remove_object(MINIO_BUCKET, data.path)
+        mc.remove_object(bucketName, filePath)
         SharedFile.objects(file=file).delete()
         quota_user.storage_used -= file.size
         file.delete()
@@ -372,7 +384,8 @@ def get_file(path: str, username: Annotated[str, Depends(get_auth_user_optional)
         )
 
     try:
-        mc.fget_object(MINIO_BUCKET, path, "/tmp/" + path)
+        bucketName, filePath = getFilePath(path)
+        mc.fget_object(bucketName, filePath, "/tmp/" + path)
         return "/tmp/" + path
     except Exception as err:
         raise HTTPException(status_code=400, detail=str(err))
@@ -421,7 +434,8 @@ def get_public_file(
 
     path = file.path
     try:
-        mc.fget_object(MINIO_BUCKET, path, "/tmp/" + path)
+        bucketName, filePath = getFilePath(path)
+        mc.fget_object(bucketName, filePath, "/tmp/" + path)
         return "/tmp/" + path
     except Exception as err:
         raise HTTPException(status_code=400, detail=str(err))
@@ -553,7 +567,8 @@ def share(
 
         shared_list.append(shared_file)
 
-    for obj in mc.list_objects(MINIO_BUCKET, prefix=path + "/", recursive=True):
+    bucketName, filePath = getFilePath(path)
+    for obj in mc.list_objects(bucketName, prefix=filePath + "/", recursive=True):
         if obj.object_name[-1] == "_":
             file_path = obj.object_name[:-2]
             file = File.objects(path=file_path).first()
@@ -608,10 +623,10 @@ def get_shared_with(
             raise HTTPException(status_code=400, detail="Link has expired!")
         file = sharedFile.file
         shared_list = []
-
+        bucketName, filePath = getFilePath(file.path)
         if file.is_dir:
             for obj in mc.list_objects(
-                MINIO_BUCKET, prefix=file.path + "/", recursive=False
+                bucketName, prefix=filePath + "/", recursive=False
             ):
                 if obj.object_name[-1] == "_":
                     continue
@@ -683,11 +698,11 @@ def get_shared_with(
             raise HTTPException(status_code=400, detail="File does not exist!")
         else:
             shared_file = SharedFile.objects(user=user, file=file).first()
-
+            bucketName, filePath = getFilePath(file.path)
             if shared_file:
                 if shared_file.file.is_dir:
                     for obj in mc.list_objects(
-                        MINIO_BUCKET, prefix=path + "/", recursive=False
+                        bucketName, prefix=filePath + "/", recursive=False
                     ):
                         if obj.object_name[-1] == "_":
                             continue
@@ -832,6 +847,7 @@ def unshare(
                 return {"message": "File unshared successfully!"}
 
 
+# not altered
 @files_router.post("/copy", response_model=MessageResponse)
 def copy(
     src_path: Annotated[str, Body(embed=True)],
@@ -942,7 +958,7 @@ def copy(
 
     return {"message": "File/folder copied successfully!"}
 
-
+# not altered
 @files_router.post("/move", response_model=MessageResponse)
 def move(
     src_path: Annotated[str, Body(embed=True)],
@@ -1072,35 +1088,35 @@ def rename(
         raise HTTPException(
             status_code=400, detail="File already exists with that name!"
         )
-
+    bucketName, filePath = getFilePath(src_path)
     if not src_file.is_dir:
         mc.copy_object(
-            MINIO_BUCKET,
-            os.path.dirname(src_path) + "/" + new_name,
-            minio.commonconfig.CopySource(MINIO_BUCKET, src_path),
+            bucketName,
+            os.path.dirname(filePath) + "/" + new_name,
+            minio.commonconfig.CopySource(bucketName, filePath),
         )
-        mc.remove_object(MINIO_BUCKET, src_path)
+        mc.remove_object(bucketName, filePath)
 
-        src_file.path = os.path.dirname(src_path) + "/" + new_name
+        src_file.path = bucketName+"/"+ os.path.dirname(filePath) + "/" + new_name
         src_file.save()
 
         return {"message": "File renamed successfully!"}
     else:
-
-        for obj in mc.list_objects(MINIO_BUCKET, prefix=src_path + "/", recursive=True):
+        bucketName, fileName = getFilePath(src_path)
+        for obj in mc.list_objects(bucketName, prefix=filePath + "/", recursive=True):
             mc.copy_object(
-                MINIO_BUCKET,
-                os.path.dirname(src_path)
+                bucketName,
+                os.path.dirname(fileName)
                 + "/"
                 + new_name
-                + obj.object_name[len(src_path) :],
-                minio.commonconfig.CopySource(MINIO_BUCKET, obj.object_name),
+                + obj.object_name[len(fileName) :],
+                minio.commonconfig.CopySource(bucketName, obj.object_name),
             )
-            mc.remove_object(MINIO_BUCKET, obj.object_name)
+            mc.remove_object(bucketName, obj.object_name)
 
         for file in File.objects(path__startswith=src_path):
             file.path = (
-                os.path.dirname(src_path) + "/" + new_name + file.path[len(src_path) :]
+               bucketName+ "/"+os.path.dirname(filePath) + "/" + new_name + file.path[len(filePath) :]
             )
             file.save()
 
@@ -1138,8 +1154,8 @@ def get_all_files(
         )
 
     obj_json = []
-
-    for obj in mc.list_objects(MINIO_BUCKET, search_path + "/", recursive=True):
+    bucketName, filePath = getFilePath(search_path)
+    for obj in mc.list_objects(bucketName, filePath + "/", recursive=True):
         obj_json.append(
             {
                 "path": obj.object_name,
@@ -1184,7 +1200,7 @@ def download_file(
 
     return {"token": token}
 
-
+# do changes after this
 @files_router.post("/tokenPublic", response_model=TokenResponse)
 def download_file(
     path: Annotated[str, Body(embed=True)],
@@ -1326,3 +1342,18 @@ def refresh_share_perms(username: str):
                     explicit=False,
                     owner=file.owner,
                 ).save()
+
+# function to fetch the buckets, the user has access to, based on their username
+@files_router.get("/get_bucket_list/", response_model=MessageResponse)
+def get_bucket_list(username: str):
+    user = User.objects(username=username).first()
+    access_buckets = AccessBuckets.objects(user=user)
+    bucket_list = []
+    for access_bucket in access_buckets:
+        bucket_list.append(access_bucket.bucket)
+    return {
+        "message": "Bucket list fetched successfully!",
+        "data": {
+            "bucket_list": bucket_list,
+        },
+    }
