@@ -257,6 +257,10 @@ const AdminTable = ({ data, onUpdate }) => {
       width: "10%",
     },
   ];
+  const handleGivePermission = () => {
+    // To be implemented
+    return;
+  }
 
   return (
     <div style={{ margin: "10px" }}>

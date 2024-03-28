@@ -255,6 +255,15 @@ const HomePage = () => {
     }
   }, [activeTab, bucketAccessible]);
 
+  const updateSelectedFiles = (selectedFiles) => {
+    // Add currentBucket into the id
+    const updatedSelectedFiles = selectedFiles.map((file) => {
+      return { ...file, id: currentBucket + '/' + file.id };
+    });
+    setSelectedFiles(updatedSelectedFiles);
+    console.log("selectedFiles", updatedSelectedFiles);
+  }
+
   const handleAction = useCallback(
     (data) => {
       console.log("File action data:", data);
@@ -356,17 +365,17 @@ const HomePage = () => {
       }
       if (data.id === "share_files") {
         console.log("sharing files");
-        setSelectedFiles(data.state.selectedFiles);
+        updateSelectedFiles(data.state.selectedFiles);
         setIsShareFolderModalOpen(true);
       }
       if (data.id === "copy_files") {
         console.log("copying files");
-        setSelectedFiles(data.state.selectedFiles);
+        updateSelectedFiles(data.state.selectedFiles);
         setIsCopyFilesModalOpen(true);
       }
       if (data.id === "move_files") {
         console.log("moving files");
-        setSelectedFiles(data.state.selectedFiles);
+        updateSelectedFiles(data.state.selectedFiles);
         setIsMoveFilesModalOpen(true);
       }
       if (data.id === "open_files") {
