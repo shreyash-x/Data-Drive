@@ -25,9 +25,9 @@ from dependencies import get_auth_user, get_auth_user_optional, MessageResponse
 from config import app_config, MINIO_BUCKET
 from models.user import User,AccessBuckets
 from models.file import File, SharedFile
-from models.common import Permission
+from models.common import Permission, Task
 from models.job import Job, Status
-
+from models.bucket import Bucket,GroupAccessList
 from storage.client import minio_client as mc
 from tasks.files import create_job, clean_expired_jobs, upload_file_to_minio
 
@@ -52,6 +52,8 @@ class ObjectModel(BaseModel):
     last_modified: datetime | None
     size: int | None
     metadata: dict | None
+    bucket: str | None
+    task_type: str
 
 
 class SharedFileModel(BaseModel):
@@ -63,6 +65,7 @@ class SharedFileModel(BaseModel):
     permission: Permission
     explicit: bool
     shared_with: str
+    bucket: str | None
 
 
 @files_router.post("/upload", response_model=MessageResponse)
@@ -179,7 +182,7 @@ def mkdir(
     if not parent.can_write(user):
         return {"message": "You do not have permission to create a directory here!"}
 
-    directory = File(path=data.path, owner=user, is_dir=True).save()
+    directory = File(path=data.path, owner=user, is_dir=True, group_path=parent.group_path,parent_task_type=parent.parent_task_type).save()
     bucketName, filePath = getFilePath(data.path)
     mc.put_object(bucketName, filePath + "/_", io.BytesIO(b""), 0)
     return {"message": "Directory created successfully!"}
@@ -231,7 +234,50 @@ def list(
 
     objJSON = []
     bucketName, filePath = getFilePath(data.path)
+    
+    bucket = Bucket.objects(name=bucketName).first()
+    
+    # def check_if_has_permission(obj, user):
+    #     query_path = bucketName + '/' + obj.object_name
+    #     # Remove the trailing '/'
+    #     query_path = query_path[:-1] if query_path[-1] == '/' else query_path
+        
+    #     # Check if user has direct permission for the file
+    #     if user.username in query_path:
+    #         return True
+        
+    #     # Check if there's a group access entry for the file
+    #     gf = GroupAccessList.objects(user=user, path=query_path).first()
+    #     if gf:
+    #         return True
+        
+    #     # Recursively check parent directories
+    #     while True:
+    #         # Get the parent directory path
+    #         parent_path = os.path.dirname(query_path)
+            
+    #         # Check if we've reached the root directory
+    #         if parent_path == query_path:
+    #             break
+            
+    #         # Check if there's a group access entry for the parent directory
+    #         gf = GroupAccessList.objects(user=user, path=parent_path).first()
+    #         if gf:
+    #             return True
+            
+    #         # Update query_path for the next iteration
+    #         query_path = parent_path
+    #     return False
     for obj in mc.list_objects(bucketName, filePath + "/", recursive=False):
+        filePath = f"{bucketName}/{obj.object_name}"
+        # remove the trailing '/'
+        filePath = filePath[:-1] if filePath[-1] == '/' else filePath
+        fileData = File.objects(path=filePath).first()
+        print(f"{filePath} is being checked for permission")
+        
+        if fileData is not None and not fileData.can_read(user):
+            continue
+        print("<---->",filePath)
         objJSON.append(
             {
                 "path": obj.object_name,
@@ -239,6 +285,8 @@ def list(
                 "last_modified": obj.last_modified,
                 "size": obj.size,
                 "metadata": obj.metadata,
+                "bucket": bucketName,
+                "task_type": fileData.parent_task_type.name if fileData is not None else "NONE",
             }
         )
 
@@ -268,11 +316,19 @@ def du(
             status_code=400,
             detail="You do not have permission to access this directory!",
         )
+    try:
+        return {
+            "size": directory.get_size(),
+            "last_modified": directory.get_last_modified(),
+        }
+    except Exception as err:
+        # raise HTTPException(status_code=400, detail=str(err))
+        print("Accessing empty directory")
+        return {
+            "size": 0,
+            "last_modified": None,
+        }
 
-    return {
-        "size": directory.get_size(),
-        "last_modified": directory.get_last_modified(),
-    }
 
 
 @files_router.post("/delete", response_model=MessageResponse)
@@ -348,7 +404,7 @@ def delete(
 
 
 @files_router.get("/get/{path:path}", response_class=FileResponse)
-def get_file(path: str, username: Annotated[str, Depends(get_auth_user_optional)]):
+def get_file(path: str, username: Annotated[str, Depends(get_auth_user_optional)], token: str = None):
     """
     Get the file specified by the path.
 
@@ -375,12 +431,25 @@ def get_file(path: str, username: Annotated[str, Depends(get_auth_user_optional)
             detail="File size exceeds maximum preview size!",
         )
 
+    has_access = False
+    if token is not None:
+        sharedFile = SharedFile.objects(publicAccessToken=token).first()
+        if not sharedFile:
+            raise HTTPException(status_code=400, detail="Invalid token!")
+        elif sharedFile.is_shared_public() is False:
+            raise HTTPException(status_code=400, detail="File is not shared publicly!")
+        elif sharedFile.check_expiration() is True:
+            raise HTTPException(status_code=400, detail="File has expired!")
+        else:
+            if sharedFile.file.path == path:
+                has_access = True
+
     user = None
     if username:
         user = User.objects(username=username).first()
-    if not file.can_read(user):
+    if not file.can_read(user) and not has_access:
         raise HTTPException(
-            status_code=400, detail="You do not have permission to access this file!"
+            status_code=400, detail="You do not have permission to access this file!!"
         )
 
     try:
@@ -651,12 +720,16 @@ def get_shared_with(
                         "permission": _shared_file.permission,
                         "explicit": _shared_file.explicit,
                         "shared_with": _shared_file.user.username,
+                        "bucket": bucketName,
                     }
                 )
         else:
+            path_without_bucket = ""
+            if file.path.startswith(bucketName):
+                path_without_bucket = file.path[len(bucketName) + 1 :]
             shared_list.append(
                 {
-                    "path": file.path,
+                    "path": path_without_bucket,
                     "is_dir": file.is_dir,
                     "last_modified": None,
                     "size": file.size,
@@ -664,86 +737,87 @@ def get_shared_with(
                     "permission": sharedFile.permission,
                     "explicit": sharedFile.explicit,
                     "shared_with": sharedFile.user.username,
+                    "bucket": bucketName,
                 }
             )
         return shared_list
-
-    if username:
-        user = User.objects(username=username).first()
-    else:
-        user = None
-        return {"message": "You are not logged in!"}
-
-    shared_list = []
-
-    if path == username:
-        for shared_file in SharedFile.objects(user=user, explicit=True):
-            file = shared_file.file
-            shared_list.append(
-                {
-                    "path": file.path,
-                    "is_dir": file.is_dir,
-                    "last_modified": None,
-                    "size": file.size,
-                    "metadata": None,
-                    "permission": shared_file.permission,
-                    "explicit": shared_file.explicit,
-                    "shared_with": shared_file.user.username,
-                }
-            )
-    else:
-        file = File.objects(path=path).first()
-
-        if file is None:
-            raise HTTPException(status_code=400, detail="File does not exist!")
+    else:   
+        if username:
+            user = User.objects(username=username).first()
         else:
-            shared_file = SharedFile.objects(user=user, file=file).first()
-            bucketName, filePath = getFilePath(file.path)
-            if shared_file:
-                if shared_file.file.is_dir:
-                    for obj in mc.list_objects(
-                        bucketName, prefix=filePath + "/", recursive=False
-                    ):
-                        if obj.object_name[-1] == "_":
-                            continue
-                        _shared_file = None
-                        if obj.is_dir:
-                            print(obj.object_name)
-                            _shared_file = SharedFile.objects(
-                                user=user,
-                                file=File.objects(path=obj.object_name[:-1]).first(),
-                            ).first()
-                        else:
-                            _shared_file = SharedFile.objects(
-                                user=user,
-                                file=File.objects(path=obj.object_name).first(),
-                            ).first()
+            user = None
+            return {"message": "You are not logged in!"}
+
+        shared_list = []
+
+        if path == username:
+            for shared_file in SharedFile.objects(user=user, explicit=True):
+                file = shared_file.file
+                shared_list.append(
+                    {
+                        "path": file.path,
+                        "is_dir": file.is_dir,
+                        "last_modified": None,
+                        "size": file.size,
+                        "metadata": None,
+                        "permission": shared_file.permission,
+                        "explicit": shared_file.explicit,
+                        "shared_with": shared_file.user.username,
+                    }
+                )
+        else:
+            file = File.objects(path=path).first()
+
+            if file is None:
+                raise HTTPException(status_code=400, detail="File does not exist!")
+            else:
+                shared_file = SharedFile.objects(user=user, file=file).first()
+                bucketName, filePath = getFilePath(file.path)
+                if shared_file:
+                    if shared_file.file.is_dir:
+                        for obj in mc.list_objects(
+                            bucketName, prefix=filePath + "/", recursive=False
+                        ):
+                            if obj.object_name[-1] == "_":
+                                continue
+                            _shared_file = None
+                            if obj.is_dir:
+                                print(obj.object_name)
+                                _shared_file = SharedFile.objects(
+                                    user=user,
+                                    file=File.objects(path=obj.object_name[:-1]).first(),
+                                ).first()
+                            else:
+                                _shared_file = SharedFile.objects(
+                                    user=user,
+                                    file=File.objects(path=obj.object_name).first(),
+                                ).first()
+                            shared_list.append(
+                                {
+                                    "path": obj.object_name,
+                                    "is_dir": obj.is_dir,
+                                    "last_modified": obj.last_modified,
+                                    "size": obj.size,
+                                    "metadata": obj.metadata,
+                                    "permission": _shared_file.permission,
+                                    "explicit": _shared_file.explicit,
+                                    "shared_with": _shared_file.user.username,
+                                }
+                            )
+                    else:
                         shared_list.append(
                             {
-                                "path": obj.object_name,
-                                "is_dir": obj.is_dir,
-                                "last_modified": obj.last_modified,
-                                "size": obj.size,
-                                "metadata": obj.metadata,
-                                "permission": _shared_file.permission,
-                                "explicit": _shared_file.explicit,
-                                "shared_with": _shared_file.user.username,
+                                "path": shared_file.file.path,
+                                "is_dir": shared_file.file.is_dir,
+                                "last_modified": None,
+                                "size": shared_file.file.size,
+                                "metadata": None,
+                                "permission": shared_file.permission,
+                                "explicit": shared_file.explicit,
+                                "shared_with": shared_file.user.username,
                             }
                         )
-                else:
-                    shared_list.append(
-                        {
-                            "path": shared_file.file.path,
-                            "is_dir": shared_file.file.is_dir,
-                            "last_modified": None,
-                            "size": shared_file.file.size,
-                            "metadata": None,
-                            "permission": shared_file.permission,
-                            "explicit": shared_file.explicit,
-                            "shared_with": shared_file.user.username,
-                        }
-                    )
-    return shared_list
+        return shared_list
 
 
 @files_router.post("/list_shared_by", response_model=List[SharedFileModel])

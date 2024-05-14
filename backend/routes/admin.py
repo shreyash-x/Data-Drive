@@ -8,7 +8,7 @@ from dependencies import get_admin, MessageResponse
 from models.user import User
 from mongoengine.queryset.visitor import Q
 
-from models.bucket import BucketAccessList,Bucket
+from models.bucket import BucketAccessList,Bucket, GroupAccessList
 admin_router = APIRouter(
     prefix="/admin",
     tags=["admin"],
@@ -24,6 +24,8 @@ class Stats(BaseModel):
     permission: int
     storage_quota: int
     storage_used: int
+    access_groups: List[str]
+    access_groups_permissions: List[int]
 
 
 @admin_router.post("/users", response_model=List[Stats])
@@ -41,6 +43,7 @@ def stats(bucket_name:Annotated[str,Body(embed=True)]):
         2: "SUPERADMIN"
     }
     for data in bucket_list:
+        access_groups = GroupAccessList.objects(bucket=bucket, user=data.user)
         users.append(
             Stats(
                 username=data.user.username,
@@ -50,6 +53,8 @@ def stats(bucket_name:Annotated[str,Body(embed=True)]):
                 permission=data.permission.value,
                 storage_quota=data.storage_quota,
                 storage_used=data.storage_used,
+                access_groups=[group.group_name for group in access_groups],
+                access_groups_permissions=[group.permission.value for group in access_groups]
             )
         )
     return users

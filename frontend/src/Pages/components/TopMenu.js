@@ -14,16 +14,21 @@ const TopMenu = ({
   handleMenuClick,
   bucket_list,
   activeTab,
+  currentBucket,
   setPath,
   user,
 }) => {
+  const bucketKey =
+    bucket_list.indexOf(currentBucket) !== -1
+      ? bucket_list.indexOf(currentBucket) + 7
+      : 4;
 
   return (
     <>
       <Menu
         style={{ marginBottom: "auto" }}
         onClick={handleMenuClick}
-        selectedKeys={[activeTab]}
+        selectedKeys={[activeTab, bucketKey.toString()]}
         mode="inline"
         className="custom-menu"
         items={[
@@ -32,29 +37,9 @@ const TopMenu = ({
             key: "4",
             icon: <DesktopOutlined />,
             title: "Home",
-            onClick: () => {
-              setPath(user.username);
-            },
-          },
-          {
-            label: "Shared",
-            key: "Shared",
-            icon: <ShareAltOutlined />,
-            title: "Shared",
-            children: [
-              {
-                label: "Shared with me",
-                key: "5",
-                icon: <i className="icon icon-share"></i>,
-                title: "Shared with me",
-              },
-              {
-                label: "Shared by me",
-                key: "6",
-                icon: <i className="icon icon-share"></i>,
-                title: "Shared by me",
-              },
-            ],
+            // onClick: () => {
+            //   setPath(currentBucket);
+            // },
           },
           ...bucket_list.map((bucket) => {
             return {
@@ -62,9 +47,9 @@ const TopMenu = ({
               key: 7 + bucket_list.indexOf(bucket),
               icon: <i className="icon icon-share"></i>,
               title: bucket,
-              onClick: () => {
-                setPath(user.username);
-              },
+              // onClick: () => {
+              //   setPath(currentBucket);
+              // },
             };
           }),
         ]}

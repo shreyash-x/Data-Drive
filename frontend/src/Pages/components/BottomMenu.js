@@ -24,7 +24,8 @@ const BottomMenu = ({
   activeTab,
   user,
   handleLogout,
-  role,
+  isAdmin,
+  isSuperAdmin,
 }) => (
   (<Menu
     style={{ marginBottom: "auto" }}
@@ -74,7 +75,7 @@ const BottomMenu = ({
               <span
                 style={{
                   color:
-                    role === "admin" || role === "superadmin"
+                    isAdmin || isSuperAdmin
                       ? "#1677ff"
                       : "grey",
                 }}
@@ -85,6 +86,7 @@ const BottomMenu = ({
             key: "1",
             icon: <IdcardTwoTone style={{ color: "#1677ff" }} />,
             title: "Super Admin Panel",
+            disabled: !isSuperAdmin,
             // disabled: !(role === "superadmin"),
           },
           {
@@ -92,7 +94,7 @@ const BottomMenu = ({
               <span
                 style={{
                   color:
-                    role === "ADMIN" || role === "SUPERADMIN"
+                    isAdmin || isSuperAdmin
                       ? "#1677ff"
                       : "grey",
                 }}
@@ -103,7 +105,7 @@ const BottomMenu = ({
             key: "0",
             icon: <IdcardTwoTone style={{ color: "#1677ff" }} />,
             title: "Admin Panel",
-            // disabled: !(role === "ADMIN" || role === "SUPERADMIN"),
+            disabled: !isAdmin,
           },
         ],
       },

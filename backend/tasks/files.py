@@ -90,6 +90,8 @@ def upload_file_to_minio(path, file, content_type, user, directory):
                 size=file.size,
                 owner=user,
                 public=directory.public,
+                group_path=directory.group_path,
+                parent_task_type = directory.parent_task_type,
             ).save()
 
         # Update user storage used

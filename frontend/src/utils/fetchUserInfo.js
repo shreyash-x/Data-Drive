@@ -44,7 +44,7 @@ const fetchUserInfo = async (
   setSharedPath,
   setFolders,
   setUser,
-  setIsAdmin,
+  setIsSuperAdmin,
   setLogin,
   setRoles
 ) => {
@@ -56,14 +56,11 @@ const fetchUserInfo = async (
     .then((res) => {
       console.log("user details 111", res);
       setBucketAccessible(res.data.bucket_list);
-      res.data.roles.forEach((role) => {
-        setRoles((prevRoles) => {
-          return { ...prevRoles, [role.bucket_name]: role.role };
-        });
-      });
+      setRoles(res.data.roles);
+      let bucket_name = res.data.bucket_name;
       if (pathname === "/home") {
-        setPath(res.data.username);
-        setCurrentBucket(res.data.bucket_name);
+        setPath(bucket_name);
+        setCurrentBucket(bucket_name);
       } else {
         // remove the first character
         console.log("pathname", pathname.slice(1));
@@ -71,14 +68,15 @@ const fetchUserInfo = async (
           pathname.slice(1)
         );
         setPath(filePath);
+        bucket_name = bucketName;
         setCurrentBucket(bucketName);
       }
-      setSharedPath(res.data.username);
+      setSharedPath(bucket_name);
       setUser(res.data);
-      setIsAdmin(res.data.admin);
+      setIsSuperAdmin(res.data.super_admin);
       const firstFolder = {
-        id: res.data.username,
-        name: res.data.username,
+        id: bucket_name,
+        name: bucket_name,
         isDir: true,
         isOpenable: true,
       };

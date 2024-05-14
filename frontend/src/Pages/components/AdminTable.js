@@ -1,7 +1,9 @@
-import { Button, Table, Select, Row,Col } from "antd";
+import { Button, Table, Select, Row, Col, message } from "antd";
 import { useEffect, useState, useRef } from "react";
 import { InputNumber } from "antd";
-
+import GiveBucketPermissionModal from "./GiveBucketPermissionModal";
+import CreateGroupModal from "./CreateGroupModal";
+import api from "../../utils/api";
 const { Option } = Select;
 
 /**
@@ -11,7 +13,21 @@ const { Option } = Select;
  * @param {Function} onUpdate - The function to be called when an update button is clicked.
  * @returns {JSX.Element} The rendered admin table component.
  */
-const AdminTable = ({ data, onUpdate }) => {
+const AdminTable = ({ data, onUpdate, currentBucket }) => {
+  const getGroupsData = () => {
+    const groups_data = [];
+    for (let i = 0; i < data.length; i++) {
+      for (let j = 0; j < data[i].access_groups.length; j++) {
+        let group_name = data[i].access_groups[j];
+        let permission = data[i].access_groups_permissions[j];
+        let username = data[i].username;
+        groups_data.push({ group_name, username, permission });
+      }
+    }
+    console.log("GROUPS DATA", groups_data);
+    return groups_data;
+  };
+
   data = data.map((item, index) => {
     return {
       key: index,
@@ -21,11 +37,31 @@ const AdminTable = ({ data, onUpdate }) => {
       permission: item.permission,
       storage_quota: item.storage_quota,
       storage_used: item.storage_used,
+      access_groups: item.access_groups,
+      access_groups_permissions: item.access_groups_permissions,
     };
   });
   const [dataSource, setDataSource] = useState([]);
+  const [groupsDataSource, setGroupsDataSource] = useState();
   const [changedEntries, setChangedEntries] = useState({});
   const [denominations, setDenominations] = useState({});
+  const [showGivePermissionModal, setShowGivePermissionModal] = useState(false);
+  const [showAddUserModal, setShowAddUserModal] = useState(false);
+  const [showCreateGroupModal, setShowCreateGroupModal] = useState(false);
+  const [users, setUsers] = useState([]);
+
+ 
+  useEffect(() => {
+    api
+      .get("/auth/users")
+      .then((response) => {
+        setUsers(response.data);
+      })
+      .catch((error) => {
+        message.error("Failed to fetch users");
+      });
+  }, []);
+
   const denominatioChange = {
     MB: {
       GB: 1024,
@@ -52,6 +88,7 @@ const AdminTable = ({ data, onUpdate }) => {
     // Only update dataSource if data has changed
     if (JSON.stringify(prevData) !== JSON.stringify(data)) {
       setDataSource(data);
+      setGroupsDataSource(getGroupsData());
     }
 
     // Store current data in ref
@@ -127,23 +164,23 @@ const AdminTable = ({ data, onUpdate }) => {
     TB: 1024 * 1024 * 1024 * 1024,
   };
   const columns = [
-    {
-      title: "ROLE",
-      dataIndex: "admin",
-      key: "admin",
-      align: "center",
-      render: (text, record) => (
-        <Select
-          defaultValue={mapPermissionValue(text)}
-          style={{ width: 120 }}
-          onChange={(value) => handlePermissionChange(value, record)}
-        >
-          <Option value={"USER"}>USER</Option>
-          <Option value={"ADMIN"}>ADMIN</Option>
-        </Select>
-      ),
-      width: "5%",
-    },
+    // {
+    //   title: "ROLE",
+    //   dataIndex: "admin",
+    //   key: "admin",
+    //   align: "center",
+    //   // render: (text, record) => (
+    //   //   <Select
+    //   //     defaultValue={mapPermissionValue(text)}
+    //   //     style={{ width: 120 }}
+    //   //     onChange={(value) => handlePermissionChange(value, record)}
+    //   //   >
+    //   //     <Option value={"USER"}>USER</Option>
+    //   //     <Option value={"ADMIN"}>ADMIN</Option>
+    //   //   </Select>
+    //   // ),
+    //   width: "5%",
+    // },
     {
       title: "Username",
       dataIndex: "username",
@@ -257,10 +294,67 @@ const AdminTable = ({ data, onUpdate }) => {
       width: "10%",
     },
   ];
-  const handleGivePermission = () => {
-    // To be implemented
-    return;
-  }
+
+  const groupColumns = [
+    {
+      title: "Group Name",
+      align: "center",
+      dataIndex: "group_name",
+      key: "group_name",
+      width: "20%",
+    },
+    {
+      title: "Username",
+      dataIndex: "username",
+      align: "center",
+      key: "username",
+      width: "30%",
+    },
+    {
+      title: "Permission",
+      align: "center",
+      dataIndex: "permission",
+      key: "permission",
+      align: "center",
+      render: (text, record) => (
+        <Select
+          defaultValue={mapPermissionValue(text)}
+          style={{ width: 120 }}
+          // onChange={(value) => handlePermissionChange(value, record)}
+        >
+          <Option value={0}>None</Option>
+          <Option value={1}>Read</Option>
+          <Option value={2}>Write</Option>
+        </Select>
+      ),
+      width: "10%",
+    },
+    // {
+    //   title: "Members",
+    //   dataIndex: "members",
+    //   key: "members",
+    //   render: members => members.map(member => (
+    //     <Select defaultValue={member.permission} style={{ width: 120 }}>
+    //       {/* onChange={value => handlePermissionChange(value, member.username)} */}
+    //       <Option value="None">None</Option>
+    //       <Option value="Read">Read</Option>
+    //       <Option value="Write">Write</Option>
+    //     </Select>
+    //   ))
+    // },
+    {
+      title: "Actions",
+      align: "center",
+      dataIndex: "actions",
+      key: "actions",
+      render: () => (
+        <Button onClick={() => setShowAddUserModal(true)} type="primary">
+          Remove from group
+        </Button>
+      ),
+      width: "20%",
+    },
+  ];
 
   return (
     <div style={{ margin: "10px" }}>
@@ -270,13 +364,38 @@ const AdminTable = ({ data, onUpdate }) => {
         style={{ marginBottom: "20px", padding: "10px" }}
       >
         <Col>
-          <Button type="primary" onClick={handleGivePermission}>
+          <Button
+            type="primary"
+            onClick={() => setShowGivePermissionModal(true)}
+          >
             Give Permission
           </Button>
         </Col>
+          <Col>
+            <Button
+              type="primary"
+              onClick={() => setShowCreateGroupModal(true)}
+            >
+              Create Group
+            </Button>
+          </Col>
+        
       </Row>
       <Table columns={columns} dataSource={dataSource} />
-    </div>
+        <Table columns={groupColumns} dataSource={groupsDataSource} />
+      <GiveBucketPermissionModal
+        isModalVisible={showGivePermissionModal}
+        setIsModalVisible={setShowGivePermissionModal}
+        bucket={currentBucket}
+        users={users}
+      />
+        <CreateGroupModal
+          isModalVisible={showCreateGroupModal}
+          setIsModalVisible={setShowCreateGroupModal}
+          users={users}
+          bucket={currentBucket}
+        />
+   </div>
   );
 };
 

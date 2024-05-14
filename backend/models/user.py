@@ -67,4 +67,3 @@ class AccessBuckets(Document):
             "bucket_name"
         ]
     }
-    

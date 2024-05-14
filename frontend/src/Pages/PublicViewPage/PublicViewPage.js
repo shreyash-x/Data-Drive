@@ -128,9 +128,10 @@ const PublicViewPage = () => {
     const fileActions = customActions;
     const [lastUploadedFile, setLastUploadedFile] = useState(null);
     const [rerender, setRerender] = useState(false);
+    const [currentBucket, setCurrentBucket] = useState(null);
 
     useEffect(() => {
-        fetchPublicFiles(setSharedPath, setToken);
+        fetchPublicFiles(setCurrentBucket, setSharedPath, setToken);
     }, []);
     useEffect(() => {
         if(errorMessage !== null){
@@ -139,7 +140,7 @@ const PublicViewPage = () => {
     }, [errorMessage]);
     useEffect(() => {
         if (sharedpath !== null) {
-            fetchSharedFiles(sharedpath, user, setSharedFolders, setSharedFiles, setSharedPictures, token, setErrorMessage);
+            fetchSharedFiles(currentBucket, sharedpath, user, setSharedFolders, setSharedFiles, setSharedPictures, token, setErrorMessage);
         }
     }, [sharedpath]);
 

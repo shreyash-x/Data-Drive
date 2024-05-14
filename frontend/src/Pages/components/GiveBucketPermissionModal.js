@@ -3,28 +3,29 @@ import { Modal, Form, Select, message } from "antd";
 import api from "../../utils/api";
 
 const { Option } = Select;
-const CreateAdminModal = ({
+const GiveBucketPermissionModal = ({
   users,
-  buckets,
+  bucket,
   isModalVisible,
   setIsModalVisible,
 }) => {
   const [form] = Form.useForm();
 
-  const handleCreateAdmin = (values) => {
-    const adminRequestData = {
-      bucket_name: values.bucket,
+  const handleGivePermission = (values) => {
+    const requestData = {
+      bucket_name: bucket,
       username: values.user,
-      role:"ADMIN"
+      permission: values.permission,
+      role:"USER"
     };
-    console.log("ADMIN REQUEST DATA", adminRequestData)
+    console.log("USER Request Permission DATA", requestData)
     api
-      .post("/buckets/change_bucket_permissions", adminRequestData)
+      .post("/buckets/change_bucket_permissions", requestData)
       .then((response) => {
-        message.success("Admin created successfully");
+        message.success("Permissions given successfully");
       })
       .catch((error) => {
-        message.error("Failed to create admin");
+        message.error("Failed to give permissions");
       });
   };
   const handleOk = () => {
@@ -33,7 +34,7 @@ const CreateAdminModal = ({
       .then((values) => {
         console.log(values);
         form.resetFields();
-        handleCreateAdmin(values);
+        handleGivePermission(values);
       })
       .catch((info) => {
         console.log("Validate Failed:", info);
@@ -48,40 +49,12 @@ const CreateAdminModal = ({
   return (
     <div style={{ margin: "10px" }}>
       <Modal
-        title="Create Admin"
+        title="Give Permissions to"
         visible={isModalVisible}
         onOk={handleOk}
         onCancel={handleCancel}
       >
         <Form form={form} layout="vertical" name="form_in_modal">
-          <Form.Item
-            name="bucket"
-            label="Bucket"
-            rules={[
-              {
-                message: "Please select the bucket !",
-                validator: (_, value) => {
-                  if (value) {
-                    return Promise.resolve();
-                  }
-                  return Promise.reject();
-                },
-              },
-            ]}
-          >
-            <Select
-              showSearch
-              placeholder="Select a Bucket"
-              optionFilterProp="children"
-              filterOption={(input, option) =>
-                option.children.toLowerCase().indexOf(input.toLowerCase()) >= 0
-              }
-            >
-              {buckets.slice(0, 5).map((bucket) => (
-                <Option key={bucket}>{bucket}</Option>
-              ))}
-            </Select>
-          </Form.Item>
           <Form.Item
             name="user"
             label="User"
@@ -105,15 +78,42 @@ const CreateAdminModal = ({
                 option.children.toLowerCase().indexOf(input.toLowerCase()) >= 0
               }
             >
-              {users.slice(0, 5).map((user) => (
+              {users.map((user) => (
                 <Option key={user.username}>{user.username}</Option>
               ))}
             </Select>
           </Form.Item>
+            <Form.Item
+                name="permission"
+                label="Permission"
+                rules={[
+                {
+                    message: "Please select the permission",
+                    validator: (_, value) => {
+                    if (value) {
+                        return Promise.resolve();
+                    }
+                    return Promise.reject();
+                    },
+                },
+                ]}
+            >
+                <Select
+                showSearch
+                placeholder="Select a permission"
+                optionFilterProp="children"
+                filterOption={(input, option) =>
+                    option.children.toLowerCase().indexOf(input.toLowerCase()) >= 0
+                }
+                >
+                <Option key="READ">READ</Option>
+                <Option key="WRITE">WRITE</Option>
+                </Select>
+            </Form.Item>
         </Form>
       </Modal>
     </div>
   );
 };
 
-export default CreateAdminModal;
+export default GiveBucketPermissionModal;

@@ -5,6 +5,7 @@ from config import MONGO_CONFIG
 
 from models.orm import init_db, disconnect_db
 from models.user import User, AccessBuckets
+from models.common import Role
 
 
 def create_admin():
@@ -19,7 +20,8 @@ def create_admin():
     if not user:
         print("User does not exist")
         return
-    user.admin = True
+    # user.admin = True
+    user.role = Role.ADMIN
     user.save()
     print(f"User '{username}' is now an admin")
 

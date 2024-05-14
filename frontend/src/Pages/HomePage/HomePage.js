@@ -12,7 +12,6 @@ import { fetchAdminData } from "../../utils/fetchAdminData";
 import AdminTable from "../components/AdminTable";
 import SuperAdminTable from "../components/SuperAdminTable";
 import fetchUserInfo from "../../utils/fetchUserInfo";
-import fetchSharedFiles from "../../utils/fetchSharedFiles";
 import ShareFolderModal from "../components/shareFolderModal";
 import { CreateFolderModal } from "../components/CreateFolderModal";
 import { VideoModal } from "../components/VideoModal";
@@ -20,8 +19,6 @@ import { PictureModal } from "../components/PictureModal";
 import { Spin } from "antd";
 import { Layout } from "antd";
 import { RightSidebar } from "../components/RightSidebar";
-import { fetchSharedByData } from "../../utils/fetchSharedByData";
-import SharedByTable from "../components/SharedByTable";
 import { fetchConfig } from "../../utils/fetchConfig";
 import { AdminSidebar } from "../components/AdminPageSidebar";
 import { useLocation } from "react-router-dom";
@@ -80,7 +77,7 @@ const HomePage = () => {
   const [isVideoModalOpen, setIsVideoModalOpen] = useState(false);
   const [activeVideo, setActiveVideo] = useState(null);
   const [loading, setLoading] = useState(false);
-  const [activeTab, setActiveTab] = useState("0");
+  const [activeTab, setActiveTab] = useState("4");
   const [isShareFolderModalOpen, setIsShareFolderModalOpen] = useState(false);
   const [isCopyFilesModalOpen, setIsCopyFilesModalOpen] = useState(false);
   const [isMoveFilesModalOpen, setIsMoveFilesModalOpen] = useState(false);
@@ -88,7 +85,7 @@ const HomePage = () => {
   const [sidebarSelection, setSidebarSelection] = useState([]);
   const [user, setUser] = useState({});
   const [sharedByData, setSharedByData] = useState([]);
-  const [isAdmin, setIsAdmin] = useState(false);
+  const [isSuperAdmin, setIsSuperAdmin] = useState(false);
   const [adminData, setAdminData] = useState([]);
   const [config, setConfig] = useState({});
   const [isMarkdownModalOpen, setIsMarkdownModalOpen] = useState(false);
@@ -96,7 +93,10 @@ const HomePage = () => {
   const [isDeepSearchModalOpen, setIsDeepSearchModalOpen] = useState(false);
   const [login, setLogin] = useState(false);
   const [selectedPicture, setSelectedPicture] = useState(null);
-
+  const [roles, setRoles] = useState([]);
+  const [bucketType, setBucketType] = useState(null);
+  const [taskType, setTaskType] = useState("NONE");
+  const [fileActions, setFileActions] = useState(customActions["DEFAULT"]);
   // const [uploadedFiles, setUploadedFiles] = useState(0);
   let m_uploadedFiles = new Map();
   let m_totalFiles = new Map();
@@ -135,8 +135,6 @@ const HomePage = () => {
     setActiveTab(e.key);
     handleTabChange(e.key);
   };
-
-  const fileActions = customActions;
   const [lastUploadedFile, setLastUploadedFile] = useState(null);
   const uploadFile = async (file, filename, toastId, reqId) => {
     // if there are '/' in the filename, then we need to create the folders
@@ -151,7 +149,7 @@ const HomePage = () => {
       // remove the filename from the folders array
       folders.pop();
       console.log("folders", folders);
-      var folder = path;
+      var folder = currentBucket + "/" + path;
 
       for (var i = 0; i < folders.length; i++) {
         folder = folder + "/" + folders[i];
@@ -215,54 +213,63 @@ const HomePage = () => {
       setSharedPath,
       setFolders,
       setUser,
-      setIsAdmin,
+      setIsSuperAdmin,
       setLogin,
       setRoles
     );
   }, []);
   useEffect(() => {
-    if (path !== null && activeTab !== "2" && activeTab !== "3")
+    if (path !== null && activeTab !== "2" && activeTab !== "3") {
       console.log("fetching files from bucket", currentBucket, "path", path);
-    fetchFiles(currentBucket, path, setFolders, setFiles, setPictures, login);
+      fetchFiles(currentBucket, path, setFolders, setFiles, setPictures, login);
+    }
   }, [path, currentBucket, lastUploadedFile, rerender, login]);
 
-  useEffect(() => {
-    if (sharedpath !== null && activeTab === "2") {
-      fetchSharedFiles(
-        sharedpath,
-        user,
-        setSharedFolders,
-        setSharedFiles,
-        setSharedPictures
-      );
-    }
-  }, [sharedpath, activeTab]);
+
+  // useEffect(() => {
+  //   api
+  //     .post("/buckets/get_bucket_type", {
+  //       bucket_name: currentBucket,
+  //     })
+  //     .then((response) => {
+  //       console.log("response", response);
+  //       setBucketType(response.data.data);
+  //     });
+  // }, [currentBucket]);
 
   useEffect(() => {
-    if (activeTab === "3") {
-      fetchSharedByData(setSharedByData);
-    }
-  }, [activeTab]);
-
+    setFileActions(customActions[taskType]);
+  }, [taskType]);
   // new new
   useEffect(() => {
     const activeTabInt = parseInt(activeTab);
     if (activeTabInt > 6) {
       console.log("bucket changed to ", bucketAccessible[activeTabInt - 7]);
       setCurrentBucket(bucketAccessible[activeTabInt - 7]);
+      setPath(bucketAccessible[activeTabInt - 7]);
     } else if (activeTabInt === 4 || activeTabInt === 5 || activeTabInt === 6) {
       setCurrentBucket("data-drive");
+      setPath("data-drive");
     }
   }, [activeTab, bucketAccessible]);
 
   const updateSelectedFiles = (selectedFiles) => {
     // Add currentBucket into the id
     const updatedSelectedFiles = selectedFiles.map((file) => {
-      return { ...file, id: currentBucket + '/' + file.id };
+      return { ...file, id: currentBucket + "/" + file.id };
     });
     setSelectedFiles(updatedSelectedFiles);
     console.log("selectedFiles", updatedSelectedFiles);
-  }
+  };
+
+  const updateSideBarSelection = (selectedFiles) => {
+    // Add currentBucket into the id
+    const updatedSelectedFiles = selectedFiles.map((file) => {
+      return { ...file, id: currentBucket + "/" + file.id };
+    });
+    setSidebarSelection(updatedSelectedFiles);
+    // console.log("selectedFiles", updatedSelectedFiles);
+  };
 
   const handleAction = useCallback(
     (data) => {
@@ -393,12 +400,13 @@ const HomePage = () => {
           setIsVideoModalOpen,
           setMarkdown,
           setIsMarkdownModalOpen,
-          setSelectedPicture
+          setSelectedPicture,
+          setTaskType
         );
       }
       if (data.id === "change_selection") {
         console.log("change selection");
-        setSidebarSelection(data.state.selectedFiles);
+        updateSideBarSelection(data.state.selectedFiles);
       }
       // eslint-disable-next-line react-hooks/exhaustive-deps
     },
@@ -415,8 +423,8 @@ const HomePage = () => {
   }, [adminData]);
 
   useEffect(() => {
-    setTwoToneColor(isAdmin ? "#1677ff" : "grey");
-  }, [isAdmin]);
+    setTwoToneColor(isSuperAdmin ? "#1677ff" : "grey");
+  }, [isSuperAdmin]);
 
   useEffect(() => {
     if (activeTab === "0") {
@@ -447,7 +455,6 @@ const HomePage = () => {
   //   urlPathRef.current = location.pathname;
   //   console.log("location", location.pathname)
   // }
-  const [roles, setRoles] = useState({});
 
   return (
     <div className="full-page">
@@ -461,18 +468,17 @@ const HomePage = () => {
               activeTab={activeTab}
               setPath={setPath}
               user={user}
+              currentBucket={currentBucket}
             />
             <div className="user-info">
-              {
-                console.log("ROLE RECIEVED IS ", roles[currentBucket])
-              }
+              {console.log("ROLE RECIEVED IS ", roles, currentBucket)}
               <BottomMenu
                 handleMenuClick={handleMenuClick}
                 activeTab={activeTab}
                 user={user}
-                role={roles[currentBucket]}
                 handleLogout={() => handleLogout(notifyFailure)}
-                isAdmin={isAdmin}
+                isAdmin={roles.includes(currentBucket)}
+                isSuperAdmin={isSuperAdmin}
               />
             </div>
           </>
@@ -491,6 +497,7 @@ const HomePage = () => {
               setIsDeepSearchModalOpen={setIsDeepSearchModalOpen}
             />
             <CustomFileBrowser
+              currentBucket={currentBucket}
               loading={loading}
               isCreateFolderModalOpen={isCreateFolderModalOpen}
               handleCancel={handleCancel}
@@ -576,22 +583,13 @@ const HomePage = () => {
           </Button>
         </>
       )}
-      {activeTab === "6" && (
-        <div className="sharedby">
-          <SharedByTable
-            data={sharedByData}
-            onUnshare={(id, child_username) =>
-              handleUnshare(id, child_username, setSharedByData)
-            }
-          />
-        </div>
-      )}
       {activeTab === "0" && (
         <>
           <div className="sharedby">
             <AdminTable
               data={adminData}
               onUpdate={(record) => handleAdminUpdate(record, setAdminData)}
+              currentBucket={currentBucket}
             />
           </div>
           {/* <AdminSidebar currentBucket={currentBucket} config={config} /> */}

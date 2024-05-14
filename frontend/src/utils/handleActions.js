@@ -12,7 +12,7 @@ export const downloadSelectedFiles = (data, notifyFailure, token = null) => {
   const numFiles = data.state.selectedFiles.length;
   if (numFiles === 1) {
     console.log("downloading file", data.state.selectedFiles[0].id)
-    var downloadpath = data.state.selectedFiles[0].id;
+    var downloadpath = data.state.selectedFiles[0].bucket + '/' + data.state.selectedFiles[0].id;
     if (token !== null) {
       downloadPublicLinkFile(downloadpath, token, notifyFailure)
     }
@@ -63,13 +63,22 @@ export const deleteSelectedFiles = (data, notifySuccess, notifyFailure, files, s
  * @param {function} setMarkdown - The function to set the markdown content.
  * @param {function} setIsMarkdownModalOpen - The function to set the state of the markdown modal.
  */
-export const handleFileOpen = (targetFile, activeTab, setPath, setSharedPath, path, sharedpath, pictures, setPictures, setIsPictureModalOpen, setActiveVideo, setIsVideoModalOpen, setMarkdown, setIsMarkdownModalOpen, setSelectedPicture) => {
+export const handleFileOpen = (targetFile, activeTab, setPath, setSharedPath, path, sharedpath, pictures, setPictures, setIsPictureModalOpen, setActiveVideo, setIsVideoModalOpen, setMarkdown, setIsMarkdownModalOpen, setSelectedPicture, setTaskType) => {
   console.log("active tab", activeTab);
+  const otherTabs = [
+    "0", // Admin
+    "1", // SuperAdmin
+    "4", // Default Bucket
+    "5", // Shared with me
+    "6", // Shared with others
+  ];
   if (targetFile.isDir) {
     console.log("opening directory", activeTab);
-    if (activeTab === "1") {
+    setTaskType(targetFile.task_type);
+    console.log("task type is", targetFile.task_type);
+    if (activeTab === "4" || activeTab >= "7") {
       openDirectory(targetFile, setPath);
-    } else {
+    } else if (activeTab === "5" || activeTab === "6") {
       console.log("opening shared folder");
       console.log("targetFile", targetFile);
       openDirectory(targetFile, setSharedPath);

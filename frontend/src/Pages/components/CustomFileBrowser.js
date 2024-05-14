@@ -49,6 +49,7 @@ import Markdown from "react-markdown"
  * @returns {JSX.Element} The rendered CustomFileBrowser component.
  */
 export const CustomFileBrowser = ({
+    currentBucket,
     loading,
     isCreateFolderModalOpen,
     handleCancel,
@@ -87,7 +88,7 @@ export const CustomFileBrowser = ({
         <div className="chonky">
             <Spin size="large" spinning={loading} tip="Loading..." className="centered-opaque-spinner">
                 <CreateFolderModal open={isCreateFolderModalOpen} onCancel={handleCancel}
-                    onSubmit={(values) => handleCreateFolderFormSubmit(values, path, setIsCreateFolderModalOpen, setFiles)}
+                    onSubmit={(values) => handleCreateFolderFormSubmit(values, path, setIsCreateFolderModalOpen, setFiles, currentBucket)}
                 />
                 <TransferFileModal open={isCopyFilesModalOpen} onCancel={handleCopyFilesModalCancel}
                     onSubmit={(values) => handleCopyFileFormSubmit(values, setIsCopyFilesModalOpen, selectedFiles)}

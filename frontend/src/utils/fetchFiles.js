@@ -66,6 +66,7 @@ const fetchFiles = async (
       //     window.location.href = "/"
       // }, 5000);
     }
+    notifyFailure("Uh oh! Seems like you don't have access to these files.");
     console.error(err);
   }
 };

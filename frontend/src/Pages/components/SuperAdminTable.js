@@ -1,7 +1,7 @@
 import { Button, Table, Select, Row, Col, message } from "antd";
 import { useEffect, useState, useRef } from "react";
-import CreateAdminModal from "./createAdminModal";
-import CreateBucketModal from "./createBucketModal";
+import CreateAdminModal from "./CreateAdminModal";
+import CreateBucketModal from "./CreateBucketModal";
 import api from "../../utils/api";
 
 const { Option } = Select;
@@ -25,8 +25,7 @@ const SuperAdminTable = () => {
     useState(false);
   const prevDataRef = useRef();
 
-  useEffect(() => {
-    console.log("Heyyy 333");
+  const fetchBucketAdmins = () => {
     api
       .get("/buckets/get_admin_buckets")
       .then((response) => {
@@ -44,6 +43,11 @@ const SuperAdminTable = () => {
       .catch((error) => {
         message.error("Failed to fetch buckets");
       });
+  }
+
+  useEffect(() => {
+    console.log("Heyyy 333");
+    fetchBucketAdmins();
   }, []);
 
   useEffect(() => {
@@ -67,7 +71,7 @@ const SuperAdminTable = () => {
       });
   }, []);
 
-  useEffect(() => {
+  const fetchBuckets = () => {
     api
       .get("/buckets/list_buckets")
       .then((response) => {
@@ -77,13 +81,17 @@ const SuperAdminTable = () => {
       .catch((error) => {
         message.error("Failed to fetch buckets");
       });
+  }
+
+  useEffect(() => {
+    fetchBuckets();
   }, []);
 
   const handleAddNewBucket = () => {
-    setShowCreateNewBucketModal(true);
+    setShowCreateNewBucketModal(true, () => fetchBuckets());
   };
   const handleAddNewAdmin = () => {
-    setShowCreateAdminModal(true);
+    setShowCreateAdminModal(true, () => fetchBucketAdmins());
   };
   const handleDeleteAccess = (record) => {
     console.log("handle delete");
