@@ -10,10 +10,10 @@ import handleFolderCreation from "../createFolder";
  * @param {function} setFiles - The function to set the state of the files.
  * @returns {Promise<void>} - A promise that resolves when the folder creation is handled.
  */
-export const handleCreateFolderFormSubmit = async (values, path, setIsCreateFolderModalOpen, setFiles) => {
+export const handleCreateFolderFormSubmit = async (values, path, setIsCreateFolderModalOpen, setFiles, currentBucket) => {
     setIsCreateFolderModalOpen(false);
     const folderRequest = {
-        path: path + "/" + values.foldername,
+        path: currentBucket + '/' + path + "/" + values.foldername,
     };
     const response = await handleFolderCreation(folderRequest);
     console.log(response);

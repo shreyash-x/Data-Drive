@@ -9,8 +9,9 @@ from mongoengine import (
     DateTimeField,
 )
 
-from models.common import Permission
+from models.common import Permission, Task
 from models.user import User
+from models.bucket import GroupAccessList
 
 
 class File(Document):
@@ -29,9 +30,12 @@ class File(Document):
     path = StringField(required=True, unique=True)
     size = IntField(required=True, default=0)
     last_modified = DateTimeField(required=True, default=datetime.now)
-    owner = ReferenceField(User, required=True)
+    owner = ReferenceField(User, required=False)
     is_dir = BooleanField(required=True, default=False)
-
+    group_path = StringField(required=False, default="")
+    is_task_head = BooleanField(required=False, default=False)
+    task_type = EnumField(Task,required=False, default=Task.NONE)
+    parent_task_type = EnumField(Task,required=False, default=Task.NONE)
     public = EnumField(Permission, required=True, default=Permission.NONE)
 
     meta = {
@@ -39,13 +43,38 @@ class File(Document):
             "path",
         ]
     }
+    
+    def has_personal_space(self):
+        """
+        Determine if the task type allows personal space.
+        """
+        if self.task_type in [Task.CHALLENGE, Task.VIEWER, Task.PAPER, Task.ASSIGNMENT, Task.DEFAULT]:
+            return True
+        return False
 
+    def has_public_space(self):
+        
+        if self.type in [Task.VIEWER]:
+            return True
+        return False
     def get_permission(self, user):
         """
         Get the access permission for a user for a file.
         """
         if self.owner == user:
             return min(Permission.WRITE, user.permission)
+        
+        if self.is_task_head:
+            return Permission.READ
+
+        # Check if part of an accessGroup
+        if self.group_path != "":
+            access_group = GroupAccessList.objects(path=self.group_path, user=user).first()
+            # check if path starts with the group path
+            if access_group:
+                print("Checked access group for: ", self.path, access_group.path)
+            if access_group and self.path.startswith(access_group.path):
+                return access_group.permission
 
         shared_file = SharedFile.objects(file=self, user=user).first()
         if shared_file:
@@ -73,9 +102,15 @@ class File(Document):
             {"$match": {"path": {"$regex": f"^{self.path}/"}}},
             {"$group": {"_id": None, "size": {"$sum": "$size"}}},
         ]
-
-        result = File.objects.aggregate(*pipeline)
-        return result.next()["size"]
+        try:
+            result = File.objects.aggregate(*pipeline)
+            
+            # Check if the result is empty
+            if not result:
+                return 0
+            return result.next()["size"]
+        except StopIteration:
+            return 0
 
     def get_last_modified(self):
         if not self.is_dir:
@@ -108,11 +143,35 @@ class SharedFile(Document):
     permission = EnumField(Permission, required=True)
     explicit = BooleanField(required=True, default=False)
     owner = ReferenceField(User, required=True)
+    isPublic = BooleanField(required=True, default=False)
+    expiration = DateTimeField(required=False)
+    publicAccessToken = StringField(required=False)
 
     meta = {
         "indexes": [
             "file",
             "user",
             "owner",
+            "isPublic",
+            "publicAccessToken"
         ]
     }
+
+    def is_shared_public(self):
+        """
+        Check if a file is shared publicly.
+        """
+        if self.isPublic:
+            return True
+        
+    def check_expiration(self):
+        """
+        Check if a file is expired.
+        """
+        if self.expiration:
+            if self.expiration < datetime.now():
+                return True
+            else:
+                return False
+        else:
+            return True

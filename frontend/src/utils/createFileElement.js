@@ -9,20 +9,26 @@ const isImage = (file) => ['png', 'jpg', 'jpeg', 'gif', 'bmp', 'svg'].includes(f
  * @param {string} element.last_modified - The last modified date of the element.
  * @returns {Object} - The created file element object.
  */
-const createFileElement = async (element, lendir) => {
+const createFileElement = async (element, lendir, token = null) => {
     const tempElement = {
         id: element.path,
         isDir: element.is_dir,
         size: element.size || 0,
         modDate: element.last_modified,
         name: element.path.split('/').pop() || element.path.split('/').slice(-2, -1)[0],
+        bucket: element.bucket,
+        task_type: element.task_type,
     };
     if (tempElement.name !== '_') {
         tempElement.ext = tempElement.name.split('.').pop();
     }
     if (lendir < 10) {
         if (isImage(tempElement)) {
-            await api.get(`/get/${tempElement.id}`, {
+            let url = `/get/${tempElement.bucket}/${tempElement.id}`;
+            if (token !== null) {
+                url += `?token=${token}`;
+            }
+            await api.get(url, {
                 responseType: 'blob',
             })
                 .then((res) => {

@@ -85,6 +85,7 @@ def get_auth_user_optional(token: Annotated[str, Depends(oauth2_scheme)]):
 def get_admin(token: Annotated[str, Depends(oauth2_scheme)]):
     payload = decode_jwt(token)
     admin: bool = payload.get("admin")
+    # print("decoded jwt: ", payload.get("username"), payload.get("admin"))
     exp: datetime = payload.get("exp")
     if not admin or exp is None or exp < datetime.utcnow().timestamp():
         raise HTTPException(
@@ -97,3 +98,4 @@ def get_admin(token: Annotated[str, Depends(oauth2_scheme)]):
 
 class MessageResponse(BaseModel):
     message: str
+    data: object = None

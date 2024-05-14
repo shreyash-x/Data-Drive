@@ -9,7 +9,7 @@ from models.file import File, SharedFile
 from models.job import Job, Status
 from storage.client import minio_client as mc
 from config import app_config, MINIO_BUCKET
-
+from utils.files import getFilePath
 
 def create_job(token: str, files: List[File], username=None, prefix=None):
     job = Job(token=token, username=username, start_time=datetime.now())
@@ -21,9 +21,10 @@ def create_job(token: str, files: List[File], username=None, prefix=None):
         if file.is_dir:
             continue
         try:
+            bucketName,objectName = getFilePath(file.path)
             mc.fget_object(
-                MINIO_BUCKET,
-                file.path,
+                bucketName,
+                objectName,
                 f"/tmp/{folder_name}/{os.path.relpath(file.path, prefix) if prefix else os.path.basename(file.path)}",
             )
             job.progress = (i + 1) / len(files) * 100
@@ -72,20 +73,25 @@ def clean_expired_jobs():
 def upload_file_to_minio(path, file, content_type, user, directory):
     print("Uploading")
     try:
+        print(f"Uploading to {path}")
+        bucketName,objectName = getFilePath(path)
         mc.put_object(
-            MINIO_BUCKET,
-            path,
+            bucketName,
+            objectName,
             file.file,
             -1,
             content_type=content_type,
             part_size=10*1024*1024,
         )
+        print(f"Uploaded to {path}")
 
         file = File(
                 path=path,
                 size=file.size,
                 owner=user,
                 public=directory.public,
+                group_path=directory.group_path,
+                parent_task_type = directory.parent_task_type,
             ).save()
 
         # Update user storage used

@@ -1,4 +1,4 @@
-import { downloadFile, deleteFiles, openDirectory, openImage, openMarkdown, openOtherFile, openVideo } from "./fileActions";
+import { downloadFile, downloadPublicLinkFile, deleteFiles, openDirectory, openImage, openMarkdown, openOtherFile, openVideo } from "./fileActions";
 
 /**
  * Downloads the selected files.
@@ -6,13 +6,19 @@ import { downloadFile, deleteFiles, openDirectory, openImage, openMarkdown, open
  * @param {Object} data - The data object containing the state and selected files.
  * @param {Function} notifyFailure - The function to notify in case of failure.
  */
-export const downloadSelectedFiles = (data, notifyFailure) => {
+export const downloadSelectedFiles = (data, notifyFailure, token = null) => {
   console.log("download_files", data.state);
+  console.log("Token:", token);
   const numFiles = data.state.selectedFiles.length;
   if (numFiles === 1) {
     console.log("downloading file", data.state.selectedFiles[0].id)
-    var downloadpath = data.state.selectedFiles[0].id;
-    downloadFile(downloadpath, notifyFailure);
+    var downloadpath = data.state.selectedFiles[0].bucket + '/' + data.state.selectedFiles[0].id;
+    if (token !== null) {
+      downloadPublicLinkFile(downloadpath, token, notifyFailure)
+    }
+    else {
+      downloadFile(downloadpath, notifyFailure);
+    }
   }
 };
 
@@ -57,13 +63,22 @@ export const deleteSelectedFiles = (data, notifySuccess, notifyFailure, files, s
  * @param {function} setMarkdown - The function to set the markdown content.
  * @param {function} setIsMarkdownModalOpen - The function to set the state of the markdown modal.
  */
-export const handleFileOpen = (targetFile, activeTab, setPath, setSharedPath, path, sharedpath, pictures, setPictures, setIsPictureModalOpen, setActiveVideo, setIsVideoModalOpen, setMarkdown, setIsMarkdownModalOpen, setSelectedPicture) => {
+export const handleFileOpen = (targetFile, activeTab, setPath, setSharedPath, path, sharedpath, pictures, setPictures, setIsPictureModalOpen, setActiveVideo, setIsVideoModalOpen, setMarkdown, setIsMarkdownModalOpen, setSelectedPicture, setTaskType) => {
   console.log("active tab", activeTab);
+  const otherTabs = [
+    "0", // Admin
+    "1", // SuperAdmin
+    "4", // Default Bucket
+    "5", // Shared with me
+    "6", // Shared with others
+  ];
   if (targetFile.isDir) {
     console.log("opening directory", activeTab);
-    if (activeTab === "1") {
+    setTaskType(targetFile.task_type);
+    console.log("task type is", targetFile.task_type);
+    if (activeTab === "4" || activeTab >= "7") {
       openDirectory(targetFile, setPath);
-    } else {
+    } else if (activeTab === "5" || activeTab === "6") {
       console.log("opening shared folder");
       console.log("targetFile", targetFile);
       openDirectory(targetFile, setSharedPath);

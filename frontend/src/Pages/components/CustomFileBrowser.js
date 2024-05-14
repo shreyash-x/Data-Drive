@@ -8,7 +8,7 @@ import { PictureModal } from "./PictureModal"
 import { CreateFolderModal } from "./CreateFolderModal"
 import { handleCopyFileFormSubmit } from "../../utils/modalutils/copyandmoveutils"
 import { handleMoveFileFormSubmit } from "../../utils/modalutils/copyandmoveutils"
-import { handleShareFolderFormSubmit } from "../../utils/modalutils/shareutils"
+import { handleShareFolderFormSubmit, handleGeneratePublicLink } from "../../utils/modalutils/shareutils"
 import Markdown from "react-markdown"
 /**
  * CustomFileBrowser component.
@@ -49,6 +49,7 @@ import Markdown from "react-markdown"
  * @returns {JSX.Element} The rendered CustomFileBrowser component.
  */
 export const CustomFileBrowser = ({
+    currentBucket,
     loading,
     isCreateFolderModalOpen,
     handleCancel,
@@ -87,7 +88,7 @@ export const CustomFileBrowser = ({
         <div className="chonky">
             <Spin size="large" spinning={loading} tip="Loading..." className="centered-opaque-spinner">
                 <CreateFolderModal open={isCreateFolderModalOpen} onCancel={handleCancel}
-                    onSubmit={(values) => handleCreateFolderFormSubmit(values, path, setIsCreateFolderModalOpen, setFiles)}
+                    onSubmit={(values) => handleCreateFolderFormSubmit(values, path, setIsCreateFolderModalOpen, setFiles, currentBucket)}
                 />
                 <TransferFileModal open={isCopyFilesModalOpen} onCancel={handleCopyFilesModalCancel}
                     onSubmit={(values) => handleCopyFileFormSubmit(values, setIsCopyFilesModalOpen, selectedFiles)}
@@ -97,6 +98,7 @@ export const CustomFileBrowser = ({
                     selectedFiles={selectedFiles} />
                 <ShareFolderModal open={isShareFolderModalOpen}
                     onCancel={handleShareFolderModalCancel}
+                    onGeneratePublicLink={(values) => handleGeneratePublicLink(values, selectedFiles)}
                     onSubmit={(values) => handleShareFolderFormSubmit(values, selectedFiles, setIsShareFolderModalOpen)} selectedFiles={selectedFiles} />
                 
                 <Modal

@@ -18,7 +18,7 @@ const isImage = (file) => ['png', 'jpg', 'jpeg', 'gif', 'bmp', 'svg'].includes(f
  * @param {function} setPictures - The state setter function for pictures.
  * @returns {Promise<void>} - A promise that resolves when the files are fetched and the state is updated.
  */
-const fetchSharedFiles = async (path, user, setSharedFolders, setSharedFiles, setSharedPictures, ) => {
+const fetchSharedFiles = async (currentBucket, path, user, setSharedFolders, setSharedFiles, setSharedPictures, token = null, setErrorMessage) => {
     try {
         const sharedfolderChain = path.split('/').map((_, i, arr) => arr.slice(0, i + 1).join('/'));
         const tempFolderArray = sharedfolderChain.map((id, i) => ({
@@ -37,19 +37,23 @@ const fetchSharedFiles = async (path, user, setSharedFolders, setSharedFiles, se
                 isDir: true,
             });
         }
-        
+
         console.log("tempFolderArray", tempFolderArray)
         setSharedFolders(tempFolderArray);
         const fileRequest = {
         };
-        if(path!==""){
-            fileRequest.path = path;
+        if (path !== "") {
+            fileRequest.path = currentBucket + '/' + path;
+            fileRequest.token = token;
         }
         const res = await api.post('/list_shared_with', fileRequest);
         // only use those files for which the responses are not null
         console.log("response from fetchSharedFiles", res.data)
-        const tempFileArray = (await Promise.all(res.data.map(createFileElement))).filter(file => file !== null); console.log("tempFileArray sharedfiles", tempFileArray)
-        console.log("tempFileArray",tempFileArray)
+        const tempFileArray = (
+            await Promise.all(res.data.map((element) => createFileElement(element, 0, token)))
+        ).filter(file => file !== null);
+        console.log("tempFileArray sharedfiles", tempFileArray)
+        console.log("tempFileArray", tempFileArray)
         setSharedFiles(tempFileArray);
 
         const tempPictures = tempFileArray
@@ -58,6 +62,8 @@ const fetchSharedFiles = async (path, user, setSharedFolders, setSharedFiles, se
         setSharedPictures(tempPictures);
     } catch (err) {
         console.error(err);
+        const errorMessage = err.response ? err.response.data.detail : err.message;
+        setErrorMessage(errorMessage);
     }
 };
 

@@ -53,6 +53,51 @@ export const downloadFile = (filePath, notifyFailure) => {
     });
 };
 
+export const downloadPublicLinkFile = (filePath, pat, notifyFailure) => {
+  if (filePath[filePath.length - 1] === "/") {
+    filePath = filePath.slice(0, -1);
+  }
+  api.post("/tokenPublic", {
+    token: pat,
+    path: filePath
+  })
+    .then((res) => {
+      const token = res.data.token;
+      const interval = setInterval(() => {
+        api.get("/status/" + res.data.token).then((res) => {
+          if (res.data.status === "done") {
+            clearInterval(interval);
+            // window.open("/download/" + token);
+            fetch(`/api/download/${token}`)
+              .then(response => response.blob())
+              .then(blob => {
+                const url = window.URL.createObjectURL(blob);
+                const link = document.createElement('a');
+                link.href = url;
+                const fileName = filePath.split('/').pop(); // Extract file name from download path
+                link.setAttribute('download', fileName); // Use the actual file name here
+                link.style.display = 'none'; // Ensure the link element is not visible
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
+              })
+              .catch((error) => {
+                console.log(error);
+              });
+          } else if (res.data.status === "failed") {
+            notifyFailure("Download failed");
+            clearInterval(interval);
+          }
+        }).catch((err) => {
+          console.log(err);
+        });
+      }, 1000);
+    })
+    .catch((err) => {
+      console.log(err);
+    });
+};
+
 
 /**
  * Deletes the selected files.
@@ -64,7 +109,7 @@ export const downloadFile = (filePath, notifyFailure) => {
  */
 export const deleteFiles = async (selectedFiles, notifySuccess, notifyFailure) => {
   const deletePromises = selectedFiles.map((file) => {
-    var filepath = file.id;
+    var filepath = file.bucket + '/' + file.id;
     if (filepath[filepath.length - 1] === "/") {
       filepath = filepath.slice(0, -1);
     }
@@ -122,7 +167,7 @@ export const openImage = (targetFile, pictures, setPictures, setIsPictureModalOp
   const index = loadjson.indexOf(targetFile.id);
   const newPictures = loadjson.slice(index).concat(loadjson.slice(0, index));
   console.log("newPictures", newPictures)
-  setSelectedPicture(targetFile.id)
+  setSelectedPicture(`${targetFile.bucket}/${targetFile.id}`);
   setPictures(newPictures);
   setIsPictureModalOpen(true);
 };
@@ -135,7 +180,7 @@ export const openImage = (targetFile, pictures, setPictures, setIsPictureModalOp
  * @param {Function} setIsVideoModalOpen - The function to set the video modal open state.
  */
 export const openVideo = (targetFile, setActiveVideo, setIsVideoModalOpen) => {
-  let downloadpath = targetFile.id;
+  let downloadpath = targetFile.bucket + "/" + targetFile.id;
   if (downloadpath[downloadpath.length - 1] === "/") {
     downloadpath = downloadpath.slice(0, -1);
   }
@@ -158,7 +203,7 @@ export const openVideo = (targetFile, setActiveVideo, setIsVideoModalOpen) => {
  * @param {Object} targetFile - The file to be downloaded.
  */
 export const openOtherFile = (targetFile) => {
-  let downloadpath = targetFile.id;
+  let downloadpath = targetFile.bucket + "/" + targetFile.id;
   if (downloadpath[downloadpath.length - 1] === "/") {
     downloadpath = downloadpath.slice(0, -1);
   }
@@ -188,7 +233,7 @@ export const openOtherFile = (targetFile) => {
  * @param {Function} setIsMarkdownModalOpen - The function to set the modal state.
  */
 export const openMarkdown = (targetFile, setMarkdown, setIsMarkdownModalOpen) => {
-  let downloadpath = targetFile.id;
+  let downloadpath = targetFile.bucket + "/" + targetFile.id;
   if (downloadpath[downloadpath.length - 1] === "/") {
     downloadpath = downloadpath.slice(0, -1);
   }

@@ -16,11 +16,11 @@ const uploadFileAction = defineFileAction({
   id: "upload_file",
   fileFilter: (file) => !file.isDir,
   button: {
-      name: "Upload file",
-      tooltip: "Upload a file",
-      toolbar: true,
-      contextMenu: true,
-      icon: ChonkyIconName.upload,
+    name: "Upload file",
+    tooltip: "Upload a file",
+    toolbar: true,
+    contextMenu: true,
+    icon: ChonkyIconName.upload,
   },
 });
 
@@ -45,7 +45,6 @@ const downloadFiles = defineFileAction({
     icon: ChonkyIconName.download,
   },
 });
-
 
 const deleteFiles = defineFileAction({
   id: "delete_files",
@@ -99,13 +98,63 @@ const moveFiles = defineFileAction({
   },
 });
 
-export const customActions = [
-  uploadFileAction,
-  uploadFolderAction,
-  createFolderAction,
-  downloadFiles,
-  deleteFiles,
-  shareFiles,
-  copyFiles,
-  moveFiles,
-];
+export const customActions = {
+  NONE: [
+    // uploadFileAction,
+    // uploadFolderAction,
+    // createFolderAction,
+    // downloadFiles,
+    // deleteFiles,
+    // shareFiles,
+    // copyFiles,
+    // moveFiles, 
+  ],
+  DEFAULT: [
+    uploadFileAction,
+    uploadFolderAction,
+    createFolderAction,
+    downloadFiles,
+    deleteFiles,
+    shareFiles,
+    copyFiles,
+    moveFiles,
+  ],
+  CHALLENGE: [
+    uploadFileAction,
+    uploadFolderAction,
+    createFolderAction,
+    downloadFiles,
+    deleteFiles,
+    copyFiles,
+    moveFiles,
+  ],
+  VIEWER: [
+    uploadFileAction,
+    uploadFolderAction,
+    createFolderAction,
+    downloadFiles,
+    deleteFiles,
+    shareFiles,
+    copyFiles,
+    moveFiles,
+  ],
+  PAPER: [
+    uploadFileAction,
+    uploadFolderAction,
+    createFolderAction,
+    downloadFiles,
+    deleteFiles,
+    copyFiles,
+    moveFiles,
+  ],
+  PROTOTYPE: [
+    uploadFileAction,
+    uploadFolderAction,
+    createFolderAction,
+    downloadFiles,
+    deleteFiles,
+    shareFiles,
+    copyFiles,
+    moveFiles,
+  ],
+};
